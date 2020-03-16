@@ -167,8 +167,46 @@ finale_check:
     dec di
     mov [di], ' '
     
+    xor bx, bx
+    mov bl, byte ptr [word_start]
+    add bl, byte ptr [w2_len]
+    add bl, byte ptr [w1_len]
+    inc bx
+    
+    ; update string length
+    mov cl, [w2_len]
+    inc cl
+    add byte ptr [str_len], cl
+    
+    cmp bl, byte ptr [str_len]
+    jae print_finale_string
+    mov byte ptr [word_start], 0
+    mov byte ptr [word_end], 0
+    mov byte ptr [found], FALSE
+    mov byte ptr [state], OUT_STATE
+ 
+    jmp skip_spaces
+ 
+print_finale_string:    
     ; print finale string   
     
+    ;print_str new_line_msg
+    
+    ;mov ah, 40h
+    ;mov bx, 1
+    ;mov dx, offset str
+    ;xor cx, cx
+    ;add cl, [str_len]
+    ;add cl, [w2_len]
+    ;inc cl
+    ;int 21h
+    
+    jmp endd
+
+dont_have_enough_space:
+    print_str err_msg
+        
+endd:
     print_str new_line_msg
     
     mov ah, 40h
@@ -176,17 +214,11 @@ finale_check:
     mov dx, offset str
     xor cx, cx
     add cl, [str_len]
-    add cl, [w2_len]
-    inc cl
+    ;add cl, [w2_len]
+    ;inc cl
     int 21h
-    
-    jmp endd
-
-dont_have_enough_space:
-    print_str err_msg
-        
-endd:  
-    jmp endd
+      
+    jmp $
 
 word_start db 0
 word_end db 0
