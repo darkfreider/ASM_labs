@@ -33,10 +33,10 @@ start:
     print_str third_msg
     read_str _mxln2
     
-    mov al, [str_len]
-    add al, [w1_len]
-    cmp al, [_mxln0]
-    ja dont_have_enough_space       
+    ;mov al, [str_len]
+    ;add al, [w1_len]
+    ;cmp al, [_mxln0]
+    ;ja dont_have_enough_space       
            
     xor bx, bx
     
@@ -138,6 +138,12 @@ finale_check:
     
     xor cx, cx
     mov cl, [str_len]
+    add cl, [w2_len]
+    cmp cl, 200 ; max allowed str len
+    ja not_enough_spase
+    
+    xor cx, cx
+    mov cl, [str_len]
     sub cl, [word_start]
     inc cl
     
@@ -203,8 +209,9 @@ print_finale_string:
     
     jmp endd
 
-dont_have_enough_space:
-    print_str err_msg
+not_enough_spase:
+    print_str err_msg 
+    jmp $
         
 endd:
     print_str new_line_msg
