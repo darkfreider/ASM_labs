@@ -13,30 +13,25 @@ print_str macro out_str
     int 21h
 endm
 
+read_str macro in_str
+    mov ah, 0ah
+    mov dx, offset in_str
+    int 21h
+endm
+
 .code
 .org 0x100
 
 start:
     
     print_str first_msg
-    
-    mov ah, 0ah
-    mov dx, offset _mxln0
-    int 21h
-    
+    read_str _mxln0
     
     print_str second_msg
-    
-    mov ah, 0ah
-    mov dx, offset _mxln1
-    int 21h
-            
-    
+    read_str _mxln1
+ 
     print_str third_msg
-            
-    mov ah, 0ah
-    mov dx, offset _mxln2
-    int 21h
+    read_str _mxln2
     
     mov al, [str_len]
     add al, [w1_len]
