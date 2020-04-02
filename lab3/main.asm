@@ -20,22 +20,29 @@ endm
 .org 0x100
 
 start proc
-    print_str msg_input
-    read_str _mxln_row
     
-scan_raws_loop:    
+    xor si, si
+    mov cx, 5
+_scan_raws_loop:    
+    push cx
     
     print_str input_row_msg
     read_str _mxln_row
     mov word ptr [g_str_offs], 0
     
-    xor si, si
     mov cx, 6
 _fill_row_loop:    
     call scan_int
     mov row_arr[si], ax
     add si, 2
     loop _fill_row_loop
+    
+    print_str new_line_msg
+    
+    pop cx
+    loop _scan_raws_loop
+    
+    
     
     jmp $
 start endp
@@ -131,6 +138,8 @@ row_arr dw 0, 0, 0, 0, 0, 0
         dw 0, 0, 0, 0, 0, 0
         dw 0, 0, 0, 0, 0, 0
         dw 0, 0, 0, 0, 0, 0
+
+sum_row dw 0, 0, 0, 0, 0, 0
 
 g_str_offs dw 0
 
