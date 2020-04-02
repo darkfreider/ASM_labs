@@ -57,13 +57,51 @@ _column_sum_loop:
 _row_loop:    
     mov ax, row_arr[si]
     add sum_row[di], ax
+    add di, 2
     add si, 2
     loop _row_loop
     
     pop cx
     loop _column_sum_loop
     
- ;;;; find columns with smallest numbers   
+;;;; find columns with smallest numbers
+    
+    xor bx, bx
+    xor ax, ax
+    xor si, si
+    mov ax, sum_row[si]
+    
+    mov cx, COLUMN_COUNT
+_find_lowest_column:
+    cmp sum_row[si], ax
+    jae _label
+    mov ax, sum_row[si]
+    mov bx, si
+_label:
+    add si, 2   
+    loop _find_lowest_column
+              
+    mov bx, ax  
+    
+    xor dx, dx
+    xor si, si
+    mov cx, COLUMN_COUNT
+_finale_loop:
+    cmp bx, sum_row[si]
+    jne _label2
+    mov dx, si
+    shr dx, 1
+    inc dx
+    add dx, '0'
+    mov ah, 02h
+    int 21h
+    print_str new_line_msg
+_label2:
+    add si, 2
+    loop _finale_loop
+    
+    
+    
     
     xor ax, ax
     mov ah, 4Ch
@@ -144,8 +182,12 @@ _scan_int_loop:
     jmp _scan_int_loop
     
 _cant_handle_big_numbers:
+    print_str new_line_msg
     print_str msg_cant_handle_big_numbers
-          
+    xor ax, ax
+    mov ah, 4Ch
+    int 21h
+             
 _end_scan_int:
     mov ax, bx 
     
