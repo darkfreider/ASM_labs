@@ -1,6 +1,9 @@
           
           
 CR equ 0dh
+                  
+ROW_COUNT equ 5
+COLUMN_COUNT equ 6
           
 .model tiny
 
@@ -22,7 +25,7 @@ endm
 start proc
     
     xor si, si
-    mov cx, 5
+    mov cx, ROW_COUNT
 _scan_raws_loop:    
     push cx
     
@@ -30,7 +33,7 @@ _scan_raws_loop:
     read_str _mxln_row
     mov word ptr [g_str_offs], 0
     
-    mov cx, 6
+    mov cx, COLUMN_COUNT
 _fill_row_loop:    
     call scan_int
     mov row_arr[si], ax
@@ -42,9 +45,29 @@ _fill_row_loop:
     pop cx
     loop _scan_raws_loop
     
+;;;;;;;;;;;;;;;; sum_row ;;;;;;;;;;;;;;;;;;;;;;
     
+    xor si, si
+    mov cx, ROW_COUNT
+_column_sum_loop:
+    push cx
     
-    jmp $
+    xor di, di
+    mov cx, COLUMN_COUNT
+_row_loop:    
+    mov ax, row_arr[si]
+    add sum_row[di], ax
+    add si, 2
+    loop _row_loop
+    
+    pop cx
+    loop _column_sum_loop
+    
+ ;;;; find columns with smallest numbers   
+    
+    xor ax, ax
+    mov ah, 4Ch
+    int 21h
 start endp
 
 
@@ -140,6 +163,9 @@ row_arr dw 0, 0, 0, 0, 0, 0
         dw 0, 0, 0, 0, 0, 0
 
 sum_row dw 0, 0, 0, 0, 0, 0
+
+stack_top dw 0
+stack dw 0, 0, 0, 0, 0, 0
 
 g_str_offs dw 0
 
