@@ -172,10 +172,13 @@ _scan_int_loop:
     mov ax, 10
     mul bx
     jc _cant_handle_big_numbers
+    
     mov dx, word ptr row_str[si]
     xor dh, dh
+    sub dx, '0'
+    
     add ax, dx
-    sub ax, '0'
+    jc _cant_handle_big_numbers
     mov bx, ax
 
     inc word ptr [g_str_offs]
