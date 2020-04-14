@@ -57,6 +57,9 @@ _column_sum_loop:
 _row_loop:    
     mov ax, row_arr[si]
     add sum_row[di], ax
+	
+	jc _sum_overflow
+	
     add di, 2
     add si, 2
     loop _row_loop
@@ -100,9 +103,12 @@ _label2:
     add si, 2
     loop _finale_loop
     
+    jmp _end_of_prog
     
-    
-    
+_sum_overflow:
+    print_str msg_sum_overflow
+
+_end_of_prog:        
     xor ax, ax
     mov ah, 4Ch
     int 21h
@@ -222,5 +228,6 @@ input_row_msg db "input row: ", '$'
 msg_input db "input number: ", 0ah, 0dh, '$'
 msg_cant_handle_big_numbers db "can't handle big numbers", 0ah, 0dh, '$'
 new_line_msg db 0ah, 0dh, '$'
+msg_sum_overflow db "sum overflow", 0ah, 0dh, '$'
     
 end start
