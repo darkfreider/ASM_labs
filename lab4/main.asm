@@ -38,7 +38,7 @@ start:
 	cmp word [ESC_STATE], KEY_PRESSED
 	je .done
 	
-	cmp word [Q_STATE], KEY_PRESSED
+	cmp word [SPACE_STATE], KEY_PRESSED
 	jne .game_logic
 	add word [pixel_x], 1
 	
