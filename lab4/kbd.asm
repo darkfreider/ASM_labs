@@ -49,10 +49,10 @@ restore_kbd:
 %define KEY_PRESSED  0x01
 %define KEY_RELEASED 0x02
 
-ESC_STATE:   dw KEY_RELEASED
-A_STATE:     dw KEY_RELEASED
-D_STATE:     dw KEY_RELEASED
-SPACE_STATE: dw KEY_RELEASED
+KBD_ESC_STATE:   dw KEY_RELEASED
+KBD_A_STATE:     dw KEY_RELEASED
+KBD_D_STATE:     dw KEY_RELEASED
+KBD_SPACE_STATE: dw KEY_RELEASED
 
 %define KEYCODE_ESC_PR  0x01
 %define KEYCODE_ESC_REL 0x81
@@ -75,45 +75,45 @@ PRIVATE_kbd_isr:
 .handle_esc_pr:
 	cmp al, KEYCODE_ESC_PR
 	jne .handle_esc_rel
-	mov word [ESC_STATE], KEY_PRESSED
+	mov word [KBD_ESC_STATE], KEY_PRESSED
 	jmp .done
 .handle_esc_rel:
 	cmp al, KEYCODE_ESC_REL
 	jne .handle_a_pr
-	mov word [ESC_STATE], KEY_RELEASED
+	mov word [KBD_ESC_STATE], KEY_RELEASED
 	jmp .done
 	
 .handle_a_pr:
 	cmp al, KEYCODE_A_PR
 	jne .handle_a_rel
-	mov word [A_STATE], KEY_PRESSED
+	mov word [KBD_A_STATE], KEY_PRESSED
 	jmp .done
 .handle_a_rel:	
 	cmp al, KEYCODE_A_REL
 	jne .handle_d_pr
-	mov word [A_STATE], KEY_RELEASED
+	mov word [KBD_A_STATE], KEY_RELEASED
 	jmp .done
 	
 .handle_d_pr:
 	cmp al, KEYCODE_D_PR
 	jne .handle_d_rel
-	mov word [D_STATE], KEY_PRESSED
+	mov word [KBD_D_STATE], KEY_PRESSED
 	jmp .done
 .handle_d_rel:
 	cmp al, KEYCODE_D_REL
-	jne .handle_next_key_stab
-	mov word [D_STATE], KEY_RELEASED
+	jne .handle_space_pr
+	mov word [KBD_D_STATE], KEY_RELEASED
 	jmp .done
 	
 .handle_space_pr:
 	cmp al, KEYCODE_SPACE_PR
 	jne .handle_space_rel
-	mov word [SPACE_STATE], KEY_PRESSED
+	mov word [KBD_SPACE_STATE], KEY_PRESSED
 	jmp .done
 .handle_space_rel:
 	cmp al, KEYCODE_SPACE_REL
 	jne .handle_next_key_stab
-	mov word [SPACE_STATE], KEY_RELEASED
+	mov word [KBD_SPACE_STATE], KEY_RELEASED
 	jmp .done
 	
 .handle_next_key_stab:	
