@@ -10,8 +10,16 @@ fake_start:
 	%include "video.asm"
 	%include "kbd.asm"
 	
-pixel_x: dw 0
-pixel_y: dw 5
+m_x:   dw 30
+m_y:   dw 0
+
+m_velocity_x: dw 0
+m_velocity_y: dw 0
+
+%define MAX_JUMP_COUNTER 10
+jump_counter: dw 0
+is_in_jump: dw 0
+is_on_ground: dw 0
 
 ESC_STATE:   dw KEY_RELEASED
 A_STATE:     dw KEY_RELEASED
@@ -24,21 +32,6 @@ start:
 	call init_text_video
 	call install_kbd
 	
-	push 0
-	push 0
-	call put_char
-	add sp, 4
-	
-	push 10
-	push 10
-	call put_char
-	add sp, 4
-	
-	push 24
-	push 79
-	call put_char
-	add sp, 4
-	
 .game_loop:
 
 	call grab_input
@@ -46,30 +39,78 @@ start:
 	cmp word [ESC_STATE], KEY_PRESSED
 	je .done
 	
+	mov word [m_velocity_x], 0
+	mov word [m_velocity_y], 0
+	
 .handle_d_key:
 	cmp word [D_STATE], KEY_PRESSED
 	jne .handle_a_key
-	add word [pixel_x], 1
-	jmp .game_logic
+	mov word [m_velocity_x], 1
 	
 .handle_a_key:	
 	cmp word [A_STATE], KEY_PRESSED
-	jne .handle_next_key_stab ; change it if you want to add new keys
-	sub word [pixel_x], 1
-	jmp .game_logic
+	jne .handle_space_key ; change it if you want to add new keys
+	mov word [m_velocity_x], -1
 	
-.handle_next_key_stab:
+.handle_space_key:
+	cmp word [SPACE_STATE], KEY_PRESSED
+	jne .next_key_stab
+	
+	cmp word [is_in_jump], 1
+	je .next_key_stab
+	
+	cmp word [is_on_ground], 0
+	je .next_key_stab
+	
+	mov word [is_in_jump], 1
+	
+.next_key_stab:
 
 .game_logic:
 	call clear_screen
 	
+	cmp word [is_in_jump], 1
+	jne .apply_gravity
+	cmp word [jump_counter], MAX_JUMP_COUNTER
+	jge .end_of_jump
+	inc word [jump_counter]
+	mov word [m_velocity_y], -1
+	jmp .update_position
+	
+.end_of_jump:
+	mov word [jump_counter], 0
+	mov word [is_in_jump], 0
+	
+.apply_gravity:
+	mov word [m_velocity_y], 1
+
+.update_position:
+	mov ax, word [m_velocity_x]
+	add word [m_x], ax
+	mov ax, word [m_velocity_y]
+	add word [m_y], ax
+	
+	
+	
+	mov word [is_on_ground], 0
+.solve_collisions:
+	; solve collisions
+	mov ax, word [m_y]
+	add ax, 4
+	cmp ax, 25
+	jle .draw
+	mov word [is_on_ground], 1
+	mov word [m_y], 25 - 4
+	
+.draw:
 	push 4 ; h
 	push 8 ; w
-	push word [pixel_y]
-	push word [pixel_x]
+	push word [m_y]
+	push word [m_x]
 	call draw_rect
 	add sp, 8
 
+	
 .game_loop_end:
 	call flip_offscreen_buffer
     call frame_delay
@@ -109,24 +150,57 @@ frame_delay:
 	
 	mov cx, 0x00
 	mov dx, 0xc350
+	;mov dx, 0x80e8
 	mov ax, 0x8600
 	int 0x15
 	
 	popa
 	ret
-	
-	
-	
-	
 
+; int16 mul_fixed(int16 a, int16 b);
+; stack:
+;		b -> bp + 6
+;		a -> bp + 4
+;		ret_addr -> bp + 2
+mul_fixed:
+	push bp
+	mov bp, sp
+	push ax
+	push bx
+	push dx
 	
+	mov ax, word [bp + 4]
+	shr ax, 3
+	mov bx, word [bp + 6]
+	shr bx, 3
 	
+	imul bx
+	shr ax, 2
 	
-	
-	
-	
-	
-	
-	
-	
+	pop dx
+	pop bx
+	pop ax
+	pop bp
 	ret
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
