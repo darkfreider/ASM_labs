@@ -58,8 +58,9 @@ clear_screen:
 	ret
 	
 
-; void put_char(int x, int y);
+; void put_char(int x, int y, int char);
 ; stack:
+;       char -> bp + 8
 ;		y -> bp + 6
 ;		x -> bp + 4
 ;		ret_addr -> bp + 2
@@ -80,15 +81,17 @@ put_char:
 	add bx, [bp + 4]
 	shl bx, 1
 	
-	mov word [PRIVATE_secreen_buff + bx], (0x0200 | 'z')
+	mov ax, word [bp + 8]
+	mov word [PRIVATE_secreen_buff + bx], ax
 	
 	pop bx
 	pop ax
 	pop bp
 	ret
 
-; void draw_rect(x, y, w, h)
+; void draw_rect(x, y, w, h, char)
 ; stack:
+;       char -> bp + 12
 ;       h -> bp + 10
 ;       w -> bp + 8
 ;		y -> bp + 6
@@ -111,6 +114,8 @@ draw_rect:
 	cmp cx, [bp + 8]
 	je .loop_y_end
 	
+	push word [bp + 12]
+	
 	mov bx, ax
 	add bx, [bp + 6]
 	push bx
@@ -119,7 +124,7 @@ draw_rect:
 	add bx, [bp + 4]
 	push bx
 	call put_char
-	add sp, 4
+	add sp, 6
 	
 	inc cx
 	jmp .loop_x
