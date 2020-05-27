@@ -97,8 +97,6 @@ start:
 	mov ax, word [m_velocity_y]
 	add word [m_y], ax
 	
-	
-	
 	call solve_collisions
 	
 .draw:
@@ -203,11 +201,78 @@ grab_input:
 solve_collisions:
 	push bp
 	mov bp, sp
+	
+	call resolve_vertical_collisions
+	call resolve_horisontal_collisions
+
+	pop bp
+	ret
+	
+; void resolve_horisontal_collisions(void)
+resolve_horisontal_collisions:
+	push bp
+	mov bp, sp
 	push ax
 	
+.moving_left:
+	cmp word [m_velocity_x], 0
+	jge .moving_right
+	
+	push word [m_y]
+	push word [m_x]
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .moving_left_down
+	add word [m_x], 1
+	jmp .done
+.moving_left_down:
+	mov ax, word [m_y]
+	add ax, MARIO_HEIGHT - 1
+	push ax
+	push word [m_x]
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .done
+	add word [m_x], 1
+	jmp .done
+	
+.moving_right:
+	mov ax, word [m_y]
+	add ax, MARIO_HEIGHT- 1
+	push ax
+	push word [m_x]
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .moving_right_bottom
+	add word [m_x], -1
+	jmp .done
+.moving_right_bottom:
+	mov ax, word [m_y]
+	add ax, MARIO_HEIGHT- 1
+	push ax
+	mov ax, word [m_x]
+	add ax, MARIO_WIDTH - 1
+	push ax
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .done
+	add word [m_x], -1
 
-.check_up_or_down:
+.done:
+	pop ax
+	pop bp
+	ret
 
+;void resolve_vertical_collisions(void)	
+resolve_vertical_collisions:
+	push bp
+	mov bp, sp
+	push ax
+	
 	mov word [is_on_ground], 0
 .moving_up:
 	cmp word [m_velocity_y], 0
@@ -245,12 +310,12 @@ solve_collisions:
 	call get_tile
 	add sp, 4
 	cmp al, '.'
-	je .down_check_right_bottom
+	je .moving_down_right
 	add word [m_y], -1
 	mov word [is_on_ground], 1
 	jmp .done
 
-.down_check_right_bottom:
+.moving_down_right:
 	mov ax, word [m_y]
 	add ax, MARIO_HEIGHT - 1
 	push ax
@@ -268,7 +333,7 @@ solve_collisions:
 	pop ax
 	pop bp
 	ret
-	
+
 ; void frame_delay(void);
 frame_delay:
 	pusha
