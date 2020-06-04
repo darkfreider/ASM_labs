@@ -14,9 +14,9 @@ start:
 	; command line = " 0x00 0x00"
 	
 	mov bx, offset program_end
-	mov     cl,4
-	shr     bx,cl
-	add     bx,17 ; add 1 paragraph for alignment and 256 bytes for stack
+	mov     cl, 4
+	shr     bx, cl
+	add     bx, 17 ; add 1 paragraph for alignment and 256 bytes for stack
 
 	mov     ah, 4Ah
 	int     21h

@@ -1,4 +1,6 @@
 
+SCREEN_HEIGHT equ 25
+SCREEN_WIDTH equ 80
 
 PRIVATE_secreen_buff: times (80 * 25 * 2) db 0   ; offscreen buffer
 
@@ -67,9 +69,17 @@ clear_screen:
 put_char:
 	push bp
 	mov bp, sp
-	
 	push ax
 	push bx
+	
+	cmp word [bp + 4], 0
+	jl .done
+	cmp word [bp + 4], SCREEN_WIDTH
+	jge .done
+	cmp word [bp + 6], 0
+	jl .done
+	cmp word [bp + 6], SCREEN_HEIGHT
+	jge .done
 	
 	; screen[y * 80 + x]
 	; screen[(y << 6) + (y << 4) + x]
@@ -83,7 +93,8 @@ put_char:
 	
 	mov ax, word [bp + 8]
 	mov word [PRIVATE_secreen_buff + bx], ax
-	
+
+.done:	
 	pop bx
 	pop ax
 	pop bp
@@ -139,9 +150,56 @@ draw_rect:
 	pop ax
 	pop bp
 	ret
+	
 
+score_string: db "Score: 00000"
 
+; void print_score(int score);
+; stack:
+;       score -> bp + 4
+;		ret_addr -> bp + 2
+print_score:
+	push bp
+	mov bp, sp
+	push es
+	pusha
+	
+	push 0xb800
+	pop es
+	mov ax, word [bp + 4]	
+	
+	mov cx, 5
+.form_string:
+	xor dx, dx
+	mov bx, 10 ; dx:ax
+	div bx
+	
+	add dx, '0'
+	mov bx, cx
+	mov byte [score_string + bx + 6], dl
 
+	loop .form_string
+	
+	xor bx, bx
+	mov cx, 12
+.print_loop:
+	xor ax, ax
+	mov al, byte [score_string + bx]
+	
+	or ax, 0x0200
+	push ax
+	push 0
+	push bx
+	call put_char
+	add sp, 6
+	
+	inc bx
+	loop .print_loop
+	
+	popa
+	pop es
+	pop bp
+	ret
 
 
 

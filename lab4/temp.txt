@@ -1,0 +1,50 @@
+.moving_left:
+	cmp word [m_velocity_x], 0
+	jg .moving_right
+
+.check_left_top:
+	push word [m_y]
+	push word [m_x]
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .check_left_bottom
+	add word [m_x], 1
+	jmp .check_up_or_down
+	
+.check_left_bottom:
+	mov ax, word [m_y]
+	add ax, MARIO_HEIGHT - 1
+	push ax
+	push word [m_x]
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .check_up_or_down
+	add word [m_x], 1
+	jmp .check_up_or_down
+	
+.moving_right:
+.check_right_top:
+	push word [m_y]
+	mov ax, word [m_x]
+	add ax, MARIO_WIDTH - 1
+	push ax
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .check_right_bottom
+	add word [m_x], -1
+	
+.check_right_bottom:
+	mov ax, word [m_y]
+	add ax, MARIO_HEIGHT - 1
+	push ax
+	mov ax, word [m_x]
+	add ax, MARIO_WIDTH - 1
+	push ax
+	call get_tile
+	add sp, 4
+	cmp al, '.'
+	je .check_up_or_down
+	add word [m_x], -1
