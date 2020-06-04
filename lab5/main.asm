@@ -38,8 +38,9 @@ fake_start:
 	new_str:     times 64 db 0
 	
 	MAX_LINE_BUF_LEN equ 1024
-	line_buf_len:  dw 0
-	line_buf:      times MAX_LINE_BUF_LEN db 0
+	line_buf_len:  dw 6
+	;line_buf:      times MAX_LINE_BUF_LEN db 0
+	line_buf: db "zzzzke"
 	temp_line_buf: times MAX_LINE_BUF_LEN db 0
 	
 	
@@ -67,10 +68,7 @@ parse_cmd_line:
 	push bp
 	mov bp, sp
 	pusha
-	; parse file name
-	; parse target_str
-	; parse new_str
-	
+
 	cld
 	
 	mov si, 0
@@ -173,6 +171,72 @@ parse_cmd_line:
 	ret
 	ret
 	
+
+remove_sub_str:
+.done:
+	ret
+
+; NOTE(max): find substring in a line_buf
+;            We know the lenght of a substring (it's in target_str_len)
+;            so we only need to find starting index
+find_sub_str:
+	push bp
+	mov bp, sp
+	push cx
+	push dx
+	push si
+	push di
+	; cx
+	; dx
+	; si - i
+	; di - j
+	
+	mov cx, word [line_buf_len]
+	sub cx, word [target_str_len]
+	mov si, 0
+.outer_loop: ; counter si - i
+	cmp si, cx
+	jg .not_found
+	
+	mov di, 0
+	mov dx, word [target_str_len]
+	.inner_loop: ; counter di - j
+		cmp di, dx
+		jge .check
+		mov bx, si
+		add bx, di
+		mov al, byte [line_buf + bx]
+		cmp al, byte [target_str + di]
+		jne .check
+		
+		inc di
+		jmp .inner_loop
+		
+.check:
+	cmp di, word [target_str_len]
+	jne .outer_loop_end
+	mov ax, si
+	jmp .done
+	
+.outer_loop_end:
+	inc si
+	jmp .outer_loop
+	
+.not_found:
+	mov ax, -1
+	; cx
+	; dx
+	; si - i
+	; di - j
+.done:
+	pop di
+	pop si
+	pop dx
+	pop cx
+	pop bp
+	ret
+
+	
 %macro debug_str_pring 2
 	mov bx, word [%2]
 	mov byte [%1 + bx], '$'
@@ -180,19 +244,32 @@ parse_cmd_line:
 	print_str msg_new_line
 %endmacro
 
+msg_not_found: db "NO match", 0ah, 0dh, '$'
+msg_found:     db "FOUND", 0ah, 0dh, '$'
+
 start:
 	mov bp, sp
 	mov ax, ds
 	mov es, ax
 	
 	call read_cmd_line
-
 	call parse_cmd_line
 	
+	call find_sub_str
+	cmp ax, -1
+	jne .found
+	print_str msg_not_found
+	jmp .done
+.found:
+	print_str msg_found
+	
+	
+
+.done:
+
 	debug_str_pring file_name, file_name_len
 	debug_str_pring target_str, target_str_len
 	debug_str_pring new_str, new_str_len
-	
 	mov ax, 0x4c00
     int 0x21
 
