@@ -1,6 +1,10 @@
 org 0x100
 BITS 16
 
+CR equ 0x0d
+NL equ 0x0a
+; proper newline on windows/dos CR, NL
+
 %macro terminate 0
 	mov ax, 0x4c00
     int 0x21
@@ -12,6 +16,14 @@ BITS 16
     int 21h
 %endmacro
 
+%macro debug_str_pring 2
+	mov bx, word [%2]
+	mov byte [%1 + bx], '$'
+	print_str %1
+	print_str msg_new_line
+%endmacro
+
+
 fake_start:
 	jmp start
 	
@@ -20,11 +32,15 @@ fake_start:
 	; skip space
 	; read word 
 	
-	; data
-	msg_not_enough_args:  db "Not enough arguments!", 0ah, 0dh,'$'
-	msg_bad_args:         db "Bad argument line!", 0ah, 0dh, '$'
-	msg_cant_open_files:  db "Can't open files!", 0ah, 0dh, '$'
-	msg_cant_close_files: db "Can't close files!", 0ah, 0dh, '$'
+	msg_reading_from_file: db "Reading from file!", 0ah, 0dh, '$'
+	
+	msg_not_enough_args:     db "Not enough arguments!", 0ah, 0dh,'$'
+	msg_bad_args:            db "Bad argument line!", 0ah, 0dh, '$'
+	msg_cant_open_files:     db "Can't open files!", 0ah, 0dh, '$'
+	msg_cant_close_files:    db "Can't close files!", 0ah, 0dh, '$'
+	msg_cant_read_from_file: db "Can't read from file!", 0ah, 0dh, '$'
+	msg_improper_newline:    db "Ill formed new line, expected CR NL.", 0ah, 0dh, '$'
+	msg_cant_write_to_file:  db "Can't write to a file!", 0ah, 0dh, '$'
 	
 	cmd_line_len dw 0
 	cmd_line:    times 64 db 0
@@ -43,11 +59,14 @@ fake_start:
 	new_str:     times 64 db 0
 	
 	MAX_LINE_BUF_LEN equ 1024
-	line_buf_len:  dw 6
+	line_buf_len:  dw 0
 	line_buf:      times MAX_LINE_BUF_LEN db 0
-	;line_buf: db "zzzzke"
-	temp_line_buf: times MAX_LINE_BUF_LEN db 0
+	temp_line_buf: times 16 * MAX_LINE_BUF_LEN db 0
 	
+	BUFF_SIZ equ 512
+	input_buf_len: dw 0
+	input_buf:     times BUFF_SIZ db 0
+	input_index:   dw 0
 	
 read_cmd_line:
 	push bp
@@ -240,18 +259,8 @@ find_sub_str:
 	pop cx
 	pop bp
 	ret
-
 	
-%macro debug_str_pring 2
-	mov bx, word [%2]
-	mov byte [%1 + bx], '$'
-	print_str %1
-	print_str msg_new_line
-%endmacro
-
-msg_not_found: db "NO match", 0ah, 0dh, '$'
-msg_found:     db "FOUND", 0ah, 0dh, '$'
-
+	
 open_files:
 	push bp
 	mov bp, sp
@@ -264,8 +273,7 @@ open_files:
 	mov al, 0x20        ;readonly, block write, other cannot write (DOS 3.0+)
 	mov dx, file_name
 	int 0x21
-	cmp cx, 0    ; read only
-	jne .fail
+	jc .fail
 	mov word [file_descr], ax
 	
 .open_temp_file: ; open file and truncate
@@ -273,8 +281,7 @@ open_files:
 	mov ax, 0x3c00
 	mov dx, temp_file_name
 	int 0x21
-	cmp cx, 0
-	jne .fail
+	jc .fail
 	mov word [temp_file_descr], ax
 	
 	jmp .done
@@ -293,19 +300,15 @@ close_files:
 	mov bp, sp
 	pusha
 	
-	xor cx, cx
-	
 	mov bx, word [file_descr]
 	mov ax, 0x3e00
 	int 0x21
-	cmp cx, 0
-	jne .fail
+	jc .fail
 	
 	mov bx, word [temp_file_descr]
 	mov ax, 0x3e00
 	int 0x21
-	cmp cx, 0
-	jne .fail
+	jc .fail
 	
 	jmp .done
 	
@@ -317,6 +320,119 @@ close_files:
 	popa
 	pop bp
 	ret
+	
+; output is in ax (al)
+; al = -1 means EOF
+get_char:
+	push bp
+	mov bp, sp
+	push bx
+	push cx
+	push dx
+	
+	
+	mov bx, word [input_buf_len]
+	cmp word [input_index], bx
+	jl .read_from_buffer
+	
+	;print_str msg_reading_from_file
+	
+	mov bx, word [file_descr]
+	mov cx, BUFF_SIZ
+	mov dx, input_buf
+	mov ax, 0x3f00
+	int 0x21
+	jc .fail
+	
+	mov word [input_buf_len], ax
+	mov word [input_index], 0
+	cmp ax, 0
+	jne .read_from_buffer
+	mov ax, -1
+	jmp .done
+	
+.fail:
+	print_str msg_cant_read_from_file
+	terminate
+	
+.read_from_buffer:
+	xor ax, ax
+	mov bx, word [input_index]
+	mov al, byte [input_buf + bx]
+	inc word [input_index]
+	
+.done:
+	pop dx
+	pop cx
+	pop bx
+	pop bp
+	ret
+	
+get_line:
+	push bp
+	mov bp, sp
+	push bx
+	
+	xor bx, bx
+	mov word [line_buf_len], 0
+	
+.getline:
+	call get_char
+	cmp al, CR
+	je .check_new_line
+	cmp al, -1
+	je .done
+	mov byte [line_buf + bx], al
+	inc bx
+	inc word [line_buf_len]
+	jmp .getline
+	
+	
+	
+.check_new_line:
+	mov byte [line_buf + bx], al
+	inc bx
+	inc word [line_buf_len]
+	
+	call get_char
+	cmp al, NL
+	jne .improper_newline
+	mov byte [line_buf + bx], al
+	inc bx
+	inc word [line_buf_len]
+	jmp .done
+	
+.improper_newline:
+	print_str msg_improper_newline
+	terminate
+	
+.done:
+	mov ax, word [line_buf_len]
+	pop bx
+	pop bp
+	ret
+
+write_line:
+	push bp
+	mov bp, sp
+	pusha
+	
+	mov bx, word [temp_file_descr]
+	mov cx, [line_buf_len]
+	mov dx, line_buf
+	mov ax, 0x4000
+	int 0x21
+	jnc .done
+	
+	print_str msg_cant_write_to_file
+	terminate
+	
+.done:
+	popa
+	pop bp
+	ret
+	
+tmp_msg: times 16 db 0
 
 start:
 	mov bp, sp
@@ -326,17 +442,59 @@ start:
 	call read_cmd_line
 	call parse_cmd_line
 	
-	;call find_sub_str
-
 	call open_files
+	
+.main_loop:
+	call get_line
+	cmp ax, 0
+	je .done
+
+.replacement_loop:
+	call find_sub_str
+	cmp ax, -1
+	je .replacement_loop_end
+	
+	cld
+	
+	mov cx, ax
+	mov si, line_buf
+	mov di, temp_line_buf
+	rep movsb
+	
+	mov cx, word [new_str_len]
+	mov si, new_str
+	rep movsb
+	
+	mov si, line_buf
+	add si, ax
+	add si, word [target_str_len]
+	mov cx, word [line_buf_len]
+	sub cx, ax
+	sub cx, word [target_str_len]
+	rep movsb
+	
+	mov cx, MAX_LINE_BUF_LEN
+	mov si, temp_line_buf
+	mov di, line_buf
+	rep movsb
+	
+	mov cx, word [line_buf_len]
+	sub cx, word [target_str_len]
+	add cx, word [new_str_len]
+	mov word [line_buf_len], cx
+	
+.replacement_loop_end:
+	call write_line
+	
+	;mov bx, word [line_buf_len]
+	;mov byte [line_buf + bx], '$'
+	;print_str line_buf
+	jmp .main_loop
+	
+	
+.done:
 	call close_files
 	
-
-.done:
-
-	debug_str_pring file_name, file_name_len
-	debug_str_pring target_str, target_str_len
-	debug_str_pring new_str, new_str_len
 	mov ax, 0x4c00
     int 0x21
 
