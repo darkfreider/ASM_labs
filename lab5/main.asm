@@ -21,15 +21,20 @@ fake_start:
 	; read word 
 	
 	; data
-	msg_not_enough_args: db "Not enough arguments!", 0ah, 0dh,'$'
-	msg_bad_args:        db "Bad argument line!", 0ah, 0dh, '$'
+	msg_not_enough_args:  db "Not enough arguments!", 0ah, 0dh,'$'
+	msg_bad_args:         db "Bad argument line!", 0ah, 0dh, '$'
+	msg_cant_open_files:  db "Can't open files!", 0ah, 0dh, '$'
+	msg_cant_close_files: db "Can't close files!", 0ah, 0dh, '$'
 	
 	cmd_line_len dw 0
 	cmd_line:    times 64 db 0
 	
-	file_name_len:  dw 0
-	file_name:      times 64 db 0
-	temp_file_name: db "temp.txt", 0
+	file_name_len:   dw 0
+	file_name:       times 64 db 0
+	file_descr:      dw 0
+	
+	temp_file_name:  db "temp.txt", 0
+	temp_file_descr: dw 0
 	
 	target_str_len: dw 0
 	target_str:  times 64 db 0
@@ -39,8 +44,8 @@ fake_start:
 	
 	MAX_LINE_BUF_LEN equ 1024
 	line_buf_len:  dw 6
-	;line_buf:      times MAX_LINE_BUF_LEN db 0
-	line_buf: db "zzzzke"
+	line_buf:      times MAX_LINE_BUF_LEN db 0
+	;line_buf: db "zzzzke"
 	temp_line_buf: times MAX_LINE_BUF_LEN db 0
 	
 	
@@ -247,6 +252,72 @@ find_sub_str:
 msg_not_found: db "NO match", 0ah, 0dh, '$'
 msg_found:     db "FOUND", 0ah, 0dh, '$'
 
+open_files:
+	push bp
+	mov bp, sp
+	pusha
+	
+	xor cx, cx
+	
+.open_data_file: ; open existing file
+	mov ah, 0x3d
+	mov al, 0x20        ;readonly, block write, other cannot write (DOS 3.0+)
+	mov dx, file_name
+	int 0x21
+	cmp cx, 0    ; read only
+	jne .fail
+	mov word [file_descr], ax
+	
+.open_temp_file: ; open file and truncate
+	xor cx, cx
+	mov ax, 0x3c00
+	mov dx, temp_file_name
+	int 0x21
+	cmp cx, 0
+	jne .fail
+	mov word [temp_file_descr], ax
+	
+	jmp .done
+	
+.fail:
+	print_str msg_cant_open_files
+	terminate
+	
+.done:
+	popa
+	pop bp
+	ret
+	
+close_files:
+	push bp
+	mov bp, sp
+	pusha
+	
+	xor cx, cx
+	
+	mov bx, word [file_descr]
+	mov ax, 0x3e00
+	int 0x21
+	cmp cx, 0
+	jne .fail
+	
+	mov bx, word [temp_file_descr]
+	mov ax, 0x3e00
+	int 0x21
+	cmp cx, 0
+	jne .fail
+	
+	jmp .done
+	
+.fail:
+	print_str msg_cant_close_files
+	terminate
+	
+.done:
+	popa
+	pop bp
+	ret
+
 start:
 	mov bp, sp
 	mov ax, ds
@@ -255,14 +326,10 @@ start:
 	call read_cmd_line
 	call parse_cmd_line
 	
-	call find_sub_str
-	cmp ax, -1
-	jne .found
-	print_str msg_not_found
-	jmp .done
-.found:
-	print_str msg_found
-	
+	;call find_sub_str
+
+	call open_files
+	call close_files
 	
 
 .done:
