@@ -42,6 +42,9 @@ fake_start:
 	msg_improper_newline:    db "Ill formed new line, expected CR NL.", 0ah, 0dh, '$'
 	msg_cant_write_to_file:  db "Can't write to a file!", 0ah, 0dh, '$'
 	
+	msg_cant_delete_file:    db "Can't delete file!", 0ah, 0dh, '$'
+	msg_cant_rename_file:    db "Can't rename file!", 0ah, 0dh, '$'
+	
 	cmd_line_len dw 0
 	cmd_line:    times 64 db 0
 	
@@ -483,21 +486,41 @@ start:
 	add cx, word [new_str_len]
 	mov word [line_buf_len], cx
 	
+	jmp .replacement_loop
+	
 .replacement_loop_end:
 	call write_line
-	
-	;mov bx, word [line_buf_len]
-	;mov byte [line_buf + bx], '$'
-	;print_str line_buf
 	jmp .main_loop
 	
 	
 .done:
 	call close_files
 	
+	; delete main data file
+	mov dx, file_name
+	xor cx, cx
+	mov ax, 0x4100
+	int 0x21
+	jc .cant_delete_file
+	
+	; rename temp file
+	mov dx, temp_file_name
+	mov di, file_name
+	xor cx, cx
+	mov ax, 0x5600
+	int 0x21
+	jc .cant_rename_file
+	
 	mov ax, 0x4c00
     int 0x21
 
+.cant_delete_file:
+	print_str msg_cant_delete_file
+	terminate
+	
+.cant_rename_file:
+	print_str msg_cant_rename_file
+	terminate
 
 
 
